@@ -1,56 +1,91 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "GameCharacter.h"
+#include "Core/Character/GameCharacter.h"
 
 #include "Net/UnrealNetwork.h"
 #include "Engine/Engine.h"
-#include "GameFramework/PlayerState.h"
+
+#include "AbilitySystemComponent.h"
+
+#include "Core/PlayerState/GamePlayerState.h"
+#include "Abilities/Attributes/GameAttributeSet.h"
 
 AGameCharacter::AGameCharacter()
 {
-	bReplicates = true;
+    bReplicates = true;
     SetReplicateMovement(true);
-	PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 }
 
 void AGameCharacter::BeginPlay()
 {
-	Super::BeginPlay();
-	PrintNetState(TEXT("Beginplay"));
+    Super::BeginPlay();
+    PrintNetState(TEXT("BeginPlay"));
+}
+
+void AGameCharacter::PossessedBy(AController* NewController)
+{
+    Super::PossessedBy(NewController);
+    InitializeAbilitySystem();
+    PrintNetState(TEXT("PossessedBy"));
+}
+
+void AGameCharacter::OnRep_PlayerState()
+{
+    Super::OnRep_PlayerState();
+    InitializeAbilitySystem();
+    PrintNetState(TEXT("OnRep_PlayerState"));
+}
+
+void AGameCharacter::InitializeAbilitySystem()
+{
+    AGamePlayerState* GPS = GetPlayerState<AGamePlayerState>();
+    if (!GPS)
+    {
+        return;
+    }
+
+    UAbilitySystemComponent* ASC = GPS->GetAbilitySystemComponent();
+    if (!ASC)
+    {
+        return;
+    }
+
+    AbilitySystemComponent = ASC;
+    AttributeSet = GPS->GetAttributeSet();
+    AbilitySystemComponent->InitAbilityActorInfo(GPS, this);
 }
 
 void AGameCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	PlayerInputComponent->BindAction(TEXT("Debug_Increment"), IE_Pressed, this, &AGameCharacter::IncrementDebugCounter);
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
+    PlayerInputComponent->BindAction(TEXT("Debug_Increment"), IE_Pressed, this, &AGameCharacter::IncrementDebugCounter);
 }
 
 void AGameCharacter::IncrementDebugCounter()
 {
-	if (HasAuthority())
-	{
-		DebugCounter++;
-		OnRep_DebugCounter();
-
-	}
-	else
-	{
-		Server_IncrementCounter();
-	}
+    if (HasAuthority())
+    {
+        DebugCounter++;
+        OnRep_DebugCounter();
+    }
+    else
+    {
+        Server_IncrementCounter();
+    }
 }
 
 void AGameCharacter::Server_IncrementCounter_Implementation()
 {
     DebugCounter++;
-    // Сервер сам изменил — можно вызвать для вывода на экран сервера
     OnRep_DebugCounter();
 }
 
 void AGameCharacter::OnRep_DebugCounter()
 {
     const FString Msg = FString::Printf(
-        TEXT("DebugCounter = %d | LocalRole=%s | LocallyControlled=%s"),
+        TEXT("DebugCounter=%d | LocalRole=%s | LocallyControlled=%s"),
         DebugCounter,
         *UEnum::GetValueAsString(GetLocalRole()),
         IsLocallyControlled() ? TEXT("true") : TEXT("false")
@@ -60,7 +95,6 @@ void AGameCharacter::OnRep_DebugCounter()
 
     if (GEngine)
     {
-        // Разный ключ чтобы сообщения обновлялись, а не спамились бесконечно
         const int32 Key = (IsLocallyControlled() ? 1001 : 1002) + (HasAuthority() ? 10 : 0);
         GEngine->AddOnScreenDebugMessage(Key, 2.0f, FColor::Yellow, Msg);
     }
@@ -69,7 +103,6 @@ void AGameCharacter::OnRep_DebugCounter()
 void AGameCharacter::PrintNetState(const FString& Context) const
 {
     const ENetMode NM = GetNetMode();
-
     const FString Msg = FString::Printf(
         TEXT("[%s] NetMode=%d | HasAuth=%s | LocalRole=%s | RemoteRole=%s | LocallyControlled=%s"),
         *Context,
@@ -92,6 +125,5 @@ void AGameCharacter::PrintNetState(const FString& Context) const
 void AGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
     DOREPLIFETIME(AGameCharacter, DebugCounter);
-} 
+}
