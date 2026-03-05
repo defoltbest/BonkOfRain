@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GameplayEffectTypes.h" 
 #include "GameCharacter.generated.h"
 
 class UAbilitySystemComponent;
@@ -20,6 +21,18 @@ public:
 
 protected:
 
+    UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
+    TArray<TSubclassOf<class UGameplayAbility>> StartupAbilities;
+
+    UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
+    TSubclassOf<class UGameplayEffect> StartupAttributesEffect;
+
+    bool bStartupAbilitiesGiven = false;
+    bool bStartupEffectsApplied = false;
+
+    void GiveStartupAbilities();
+    void ApplyStartupEffects();
+
     virtual void BeginPlay() override;
 
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -32,6 +45,8 @@ protected:
 
 
 private:
+
+    void TryActivateDash();
 
     void InitializeAbilitySystem();
 
@@ -47,8 +62,6 @@ private:
     UFUNCTION()
     void OnRep_DebugCounter();
 
-
-private:
 
     UPROPERTY()
     TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;

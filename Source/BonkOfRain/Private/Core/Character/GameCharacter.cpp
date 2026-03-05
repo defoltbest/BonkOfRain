@@ -10,6 +10,9 @@
 
 #include "Core/PlayerState/GamePlayerState.h"
 #include "Abilities/Attributes/GameAttributeSet.h"
+#include "GameplayAbilitySpec.h"
+#include "GameplayEffect.h"
+#include "Abilities/Abilities/GA_Dash.h"
 
 AGameCharacter::AGameCharacter()
 {
@@ -55,12 +58,19 @@ void AGameCharacter::InitializeAbilitySystem()
     AbilitySystemComponent = ASC;
     AttributeSet = GPS->GetAttributeSet();
     AbilitySystemComponent->InitAbilityActorInfo(GPS, this);
+
+    if (HasAuthority())
+    {
+        GiveStartupAbilities();
+        ApplyStartupEffects();
+    }
 }
 
 void AGameCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
     PlayerInputComponent->BindAction(TEXT("Debug_Increment"), IE_Pressed, this, &AGameCharacter::IncrementDebugCounter);
+    PlayerInputComponent->BindAction(TEXT("Ability_Dash"), IE_Pressed, this, &AGameCharacter::TryActivateDash);
 }
 
 void AGameCharacter::IncrementDebugCounter()
@@ -126,4 +136,46 @@ void AGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(AGameCharacter, DebugCounter);
+}
+
+void AGameCharacter::GiveStartupAbilities()
+{
+    if (bStartupAbilitiesGiven || !AbilitySystemComponent) return;
+    if (!HasAuthority()) return;
+
+    for (const TSubclassOf<UGameplayAbility>& AbilityClass : StartupAbilities)
+    {
+        if (!AbilityClass) continue;
+
+        FGameplayAbilitySpec Spec(AbilityClass, 1);
+        AbilitySystemComponent->GiveAbility(Spec);
+    }
+
+    bStartupAbilitiesGiven = true;
+    UE_LOG(LogTemp, Warning, TEXT("StartupAbilities count: %d"), StartupAbilities.Num());
+}
+
+void AGameCharacter::ApplyStartupEffects()
+{
+    if (bStartupEffectsApplied || !AbilitySystemComponent) return;
+    if (!HasAuthority()) return;
+
+    if (StartupAttributesEffect)
+    {
+        const FGameplayEffectContextHandle Context = AbilitySystemComponent->MakeEffectContext();
+        const FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(StartupAttributesEffect, 1.0f, Context);
+
+        if (SpecHandle.IsValid())
+        {
+            AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+        }
+    }
+
+    bStartupEffectsApplied = true;
+}
+void AGameCharacter::TryActivateDash()
+{
+    if (!AbilitySystemComponent) return;
+
+    AbilitySystemComponent->TryActivateAbilityByClass(UGA_Dash::StaticClass());
 }
