@@ -4,73 +4,72 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "GameplayEffectTypes.h" 
+#include "AbilitySystemInterface.h"
 #include "GameCharacter.generated.h"
 
 class UAbilitySystemComponent;
 class UGameAttributeSet;
+class UInputMappingContext;
+class UInputAction;
+class UGameplayAbility;
+class UGameplayEffect;
 
 UCLASS()
-class BONKOFRAIN_API AGameCharacter : public ACharacter
+class BONKOFRAIN_API AGameCharacter : public ACharacter, public IAbilitySystemInterface
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
+	AGameCharacter();
 
-    AGameCharacter();
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	const UGameAttributeSet* GetAttributeSet() const { return AttributeSet; }
 
 protected:
+	virtual void BeginPlay() override;
 
-    UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
-    TArray<TSubclassOf<class UGameplayAbility>> StartupAbilities;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
 
-    UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
-    TSubclassOf<class UGameplayEffect> StartupAttributesEffect;
-
-    bool bStartupAbilitiesGiven = false;
-    bool bStartupEffectsApplied = false;
-
-    void GiveStartupAbilities();
-    void ApplyStartupEffects();
-
-    virtual void BeginPlay() override;
-
-    virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-    virtual void PossessedBy(AController* NewController) override;
-
-    virtual void OnRep_PlayerState() override;
-
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
+	void InitializeAbilitySystem();
+	void GiveStartupAbilities();
+	void ApplyStartupEffect();
 
-    void TryActivateDash();
+	void OnDashPressed();
+	void IncrementDebugCounter();
 
-    void InitializeAbilitySystem();
+	UFUNCTION(Server, Reliable)
+	void Server_IncrementCounter();
 
-    void IncrementDebugCounter();
+	UFUNCTION()
+	void OnRep_DebugCounter();
 
-    void PrintNetState(const FString& Context) const;
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent = nullptr;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UGameAttributeSet> AttributeSet = nullptr;
 
-    UFUNCTION(Server, Reliable)
-    void Server_IncrementCounter();
+	UPROPERTY(ReplicatedUsing = OnRep_DebugCounter)
+	int32 DebugCounter = 0;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
+	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
 
-    UFUNCTION()
-    void OnRep_DebugCounter();
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
+	TSubclassOf<UGameplayEffect> StartupAttributesEffect;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputMappingContext> DefaultMappingContext = nullptr;
 
-    UPROPERTY()
-    TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> DashAction = nullptr;
 
-
-    UPROPERTY()
-    TObjectPtr<UGameAttributeSet> AttributeSet;
-
-
-    UPROPERTY(ReplicatedUsing = OnRep_DebugCounter)
-    int32 DebugCounter = 0;
+	bool bStartupGranted = false;
 };
