@@ -2,12 +2,16 @@
 
 
 #include "Abilities/Abilities/GA_Dash.h"
+#include "Abilities/System/GameGameplayTags.h"
 #include "GameFramework/Character.h"
 
 UGA_Dash::UGA_Dash()
 {
     InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
     NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+
+	AbilityTags.AddTag(GameGameplayTags::AbilityTag_Movement_Dash);
+	ActivationOwnedTags.AddTag(GameGameplayTags::AbilityTag_Movement_Dash);
 }
 
 void UGA_Dash::ActivateAbility(

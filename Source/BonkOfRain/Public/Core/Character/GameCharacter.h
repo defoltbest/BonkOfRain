@@ -8,8 +8,8 @@
 #include "GameCharacter.generated.h"
 
 class UAbilitySystemComponent;
+class UGameAbilitySystemComponent;
 class UGameAttributeSet;
-class UInputMappingContext;
 class UInputAction;
 class UGameplayAbility;
 class UGameplayEffect;
@@ -28,10 +28,8 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
-
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -51,7 +49,7 @@ private:
 
 private:
 	UPROPERTY(Transient)
-	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent = nullptr;
+	TObjectPtr<UGameAbilitySystemComponent> AbilitySystemComponent = nullptr;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameAttributeSet> AttributeSet = nullptr;
@@ -64,9 +62,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Startup")
 	TSubclassOf<UGameplayEffect> StartupAttributesEffect;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
-	TObjectPtr<UInputMappingContext> DefaultMappingContext = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> DashAction = nullptr;

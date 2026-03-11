@@ -6,12 +6,14 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/Engine.h"
 
-#include "GameFramework/PlayerState.h"
 #include "AbilitySystemComponent.h"
 #include "EnhancedInputComponent.h"
 
 #include "Core/PlayerState/GamePlayerState.h"
 #include "Abilities/Attributes/GameAttributeSet.h"
+#include "Abilities/System/GameAbilitySystemComponent.h"
+#include "Abilities/System/GameGameplayTags.h"
+#include "Abilities/Abilities/GA_Dash.h"
 
 AGameCharacter::AGameCharacter()
 {
@@ -24,7 +26,6 @@ AGameCharacter::AGameCharacter()
 void AGameCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
 }
 
 UAbilitySystemComponent* AGameCharacter::GetAbilitySystemComponent() const
@@ -35,14 +36,12 @@ UAbilitySystemComponent* AGameCharacter::GetAbilitySystemComponent() const
 void AGameCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-
 	InitializeAbilitySystem();
 }
 
 void AGameCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-
 	InitializeAbilitySystem();
 }
 
@@ -55,7 +54,7 @@ void AGameCharacter::InitializeAbilitySystem()
 		return;
 	}
 
-	AbilitySystemComponent = PS->GetAbilitySystemComponent();
+	AbilitySystemComponent = Cast<UGameAbilitySystemComponent>(PS->GetAbilitySystemComponent());
 	AttributeSet = PS->GetAttributeSet();
 
 	if (!AbilitySystemComponent)
@@ -77,12 +76,7 @@ void AGameCharacter::InitializeAbilitySystem()
 
 void AGameCharacter::GiveStartupAbilities()
 {
-	if (bStartupGranted)
-	{
-		return;
-	}
-
-	if (!AbilitySystemComponent)
+	if (bStartupGranted || !AbilitySystemComponent)
 	{
 		return;
 	}
@@ -94,8 +88,6 @@ void AGameCharacter::GiveStartupAbilities()
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("StartupAbilities count: %d"), StartupAbilities.Num());
-
 	for (const TSubclassOf<UGameplayAbility>& AbilityClass : StartupAbilities)
 	{
 		if (!AbilityClass)
@@ -104,12 +96,16 @@ void AGameCharacter::GiveStartupAbilities()
 		}
 
 		FGameplayAbilitySpec Spec(AbilityClass, 1);
+
+		if (AbilityClass->IsChildOf(UGA_Dash::StaticClass()))
+		{
+			Spec.DynamicAbilityTags.AddTag(GameGameplayTags::InputTag_Ability_Dash);
+		}
+
 		AbilitySystemComponent->GiveAbility(Spec);
 	}
 
-	// важно: после GiveAbility — пушим изменения клиентам
 	AbilitySystemComponent->ForceReplication();
-
 	bStartupGranted = true;
 }
 
@@ -120,11 +116,12 @@ void AGameCharacter::ApplyStartupEffect()
 		return;
 	}
 
-
 	FGameplayEffectContextHandle Ctx = AbilitySystemComponent->MakeEffectContext();
 	Ctx.AddSourceObject(this);
 
-	const FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(StartupAttributesEffect, 1.f, Ctx);
+	const FGameplayEffectSpecHandle SpecHandle =
+		AbilitySystemComponent->MakeOutgoingSpec(StartupAttributesEffect, 1.f, Ctx);
+
 	if (SpecHandle.IsValid())
 	{
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
@@ -154,13 +151,9 @@ void AGameCharacter::OnDashPressed()
 		return;
 	}
 
-	if (StartupAbilities.Num() <= 0 || !StartupAbilities[0])
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Dash pressed but StartupAbilities[0] is empty"));
-		return;
-	}
+	const bool bActivated = AbilitySystemComponent->TryActivateAbilityByInputTag(GameGameplayTags::InputTag_Ability_Dash);
 
-	AbilitySystemComponent->TryActivateAbilityByClass(StartupAbilities[0]);
+	UE_LOG(LogTemp, Warning, TEXT("Dash input pressed | Activated=%s"), bActivated ? TEXT("true") : TEXT("false"));
 }
 
 void AGameCharacter::IncrementDebugCounter()
@@ -188,8 +181,7 @@ void AGameCharacter::OnRep_DebugCounter()
 		TEXT("DebugCounter=%d | LocalRole=%s | LocallyControlled=%s"),
 		DebugCounter,
 		*UEnum::GetValueAsString(GetLocalRole()),
-		IsLocallyControlled() ? TEXT("true") : TEXT("false")
-	);
+		IsLocallyControlled() ? TEXT("true") : TEXT("false"));
 
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *Msg);
 

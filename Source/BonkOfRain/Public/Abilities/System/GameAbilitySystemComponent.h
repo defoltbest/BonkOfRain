@@ -10,4 +10,7 @@ UCLASS()
 class BONKOFRAIN_API UGameAbilitySystemComponent : public UAbilitySystemComponent
 {
 	GENERATED_BODY()
+
+public:
+	bool TryActivateAbilityByInputTag(const FGameplayTag& InputTag);
 };
