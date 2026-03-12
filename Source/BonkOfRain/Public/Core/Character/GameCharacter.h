@@ -26,12 +26,19 @@ public:
 
 	const UGameAttributeSet* GetAttributeSet() const { return AttributeSet; }
 
+	UFUNCTION(BlueprintCallable, Category = "Character")
+	bool IsDead() const;
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Character")
+	void BP_OnDeath();
 
 private:
 	void InitializeAbilitySystem();
@@ -40,6 +47,7 @@ private:
 
 	void OnDashPressed();
 	void IncrementDebugCounter();
+	void HandleDeath();
 
 	UFUNCTION(Server, Reliable)
 	void Server_IncrementCounter();
@@ -65,6 +73,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UInputAction> DashAction = nullptr;
+
+	UPROPERTY(Replicated)
+	bool bIsDead = false;
 
 	bool bStartupGranted = false;
 };

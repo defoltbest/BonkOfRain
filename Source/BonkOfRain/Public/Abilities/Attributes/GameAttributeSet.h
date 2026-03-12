@@ -16,33 +16,45 @@ GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 UCLASS()
 class BONKOFRAIN_API UGameAttributeSet : public UAttributeSet
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    UGameAttributeSet();
+	UGameAttributeSet();
 
-    UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Health, Category = "Attributes")
-    FGameplayAttributeData Health;
-    ATTRIBUTE_ACCESSORS(UGameAttributeSet, Health)
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 
-        UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxHealth, Category = "Attributes")
-    FGameplayAttributeData MaxHealth;
-    ATTRIBUTE_ACCESSORS(UGameAttributeSet, MaxHealth)
+public:
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Health, Category = "Attributes")
+	FGameplayAttributeData Health;
+	ATTRIBUTE_ACCESSORS(UGameAttributeSet, Health)
 
+		UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxHealth, Category = "Attributes")
+	FGameplayAttributeData MaxHealth;
+	ATTRIBUTE_ACCESSORS(UGameAttributeSet, MaxHealth)
 
-        UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MoveSpeed, Category = "Attributes")
-    FGameplayAttributeData MoveSpeed;
-    ATTRIBUTE_ACCESSORS(UGameAttributeSet, MoveSpeed)
+		UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MoveSpeed, Category = "Attributes")
+	FGameplayAttributeData MoveSpeed;
+	ATTRIBUTE_ACCESSORS(UGameAttributeSet, MoveSpeed)
 
-        virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+		UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_IncomingDamage, Category = "Attributes")
+	FGameplayAttributeData IncomingDamage;
+	ATTRIBUTE_ACCESSORS(UGameAttributeSet, IncomingDamage)
 
 protected:
-    UFUNCTION()
-    void OnRep_Health(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	void OnRep_Health(const FGameplayAttributeData& OldValue);
 
-    UFUNCTION()
-    void OnRep_MaxHealth(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	void OnRep_MaxHealth(const FGameplayAttributeData& OldValue);
 
-    UFUNCTION()
-    void OnRep_MoveSpeed(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	void OnRep_MoveSpeed(const FGameplayAttributeData& OldValue);
+
+	UFUNCTION()
+	void OnRep_IncomingDamage(const FGameplayAttributeData& OldValue);
+
+private:
+	static float ClampHealth(float InHealth, float InMaxHealth);
 };

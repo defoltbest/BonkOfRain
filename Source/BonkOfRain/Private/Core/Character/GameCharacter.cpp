@@ -8,6 +8,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "EnhancedInputComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 #include "Core/PlayerState/GamePlayerState.h"
 #include "Abilities/Attributes/GameAttributeSet.h"
@@ -28,9 +29,29 @@ void AGameCharacter::BeginPlay()
 	Super::BeginPlay();
 }
 
+void AGameCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!bIsDead && IsDead())
+	{
+		HandleDeath();
+	}
+}
+
 UAbilitySystemComponent* AGameCharacter::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
+}
+
+bool AGameCharacter::IsDead() const
+{
+	if (!AbilitySystemComponent)
+	{
+		return bIsDead;
+	}
+
+	return bIsDead || AbilitySystemComponent->HasMatchingGameplayTag(GameGameplayTags::Status_Dead);
 }
 
 void AGameCharacter::PossessedBy(AController* NewController)
@@ -145,6 +166,12 @@ void AGameCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 void AGameCharacter::OnDashPressed()
 {
+	if (bIsDead)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Dash blocked: character is dead"));
+		return;
+	}
+
 	if (!AbilitySystemComponent)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Dash pressed but ASC is null"));
@@ -154,6 +181,27 @@ void AGameCharacter::OnDashPressed()
 	const bool bActivated = AbilitySystemComponent->TryActivateAbilityByInputTag(GameGameplayTags::InputTag_Ability_Dash);
 
 	UE_LOG(LogTemp, Warning, TEXT("Dash input pressed | Activated=%s"), bActivated ? TEXT("true") : TEXT("false"));
+}
+
+void AGameCharacter::HandleDeath()
+{
+	bIsDead = true;
+
+	if (Controller)
+	{
+		DisableInput(Cast<APlayerController>(Controller));
+	}
+
+	GetCharacterMovement()->DisableMovement();
+
+	UE_LOG(LogTemp, Warning, TEXT("Character died: %s"), *GetName());
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, FString::Printf(TEXT("%s died"), *GetName()));
+	}
+
+	BP_OnDeath();
 }
 
 void AGameCharacter::IncrementDebugCounter()
@@ -197,4 +245,5 @@ void AGameCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AGameCharacter, DebugCounter);
+	DOREPLIFETIME(AGameCharacter, bIsDead);
 }
